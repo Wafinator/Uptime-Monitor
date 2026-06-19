@@ -1,0 +1,36 @@
+# Dev-only services. Run `docker compose up -d` from this directory.
+# The app itself runs on the host (npm run dev) — only the dependencies are containerized.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: uptime-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: uptime
+      POSTGRES_PASSWORD: uptime
+      POSTGRES_DB: uptime
+    ports:
+      # Host port is 5433 (not 5432) to avoid colliding with a native Postgres
+      # install on the host. Inside the container Postgres still listens on 5432.
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uptime -d uptime"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Fake SMTP server. Captures every "down alert" email so we can see them in dev
+  # without configuring Gmail App Passwords. Web UI at http://localhost:8025.
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: uptime-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+
+volumes:
+  postgres-data:
