@@ -1,115 +1,101 @@
 # Uptime Monitor
 
-Self-hosted uptime monitoring for HTTP endpoints. Schedules periodic checks, logs response times, and emails you on the first failure of an outage.
+A self-hosted uptime monitor I built to learn full-stack development and practice writing real tests. You give it a URL, it pings it on a schedule, logs the response times, and emails you when it goes down.
 
 [![CI](https://github.com/Wafinator/Uptime-Monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/Wafinator/Uptime-Monitor/actions/workflows/ci.yml)
 
-> Built as a portfolio project to demonstrate full-stack engineering with a strong testing story (unit + integration + E2E, all running in CI).
-
-<!-- Replace with a real screenshot once you take one. See "Screenshots" below. -->
 ![Dashboard screenshot](docs/screenshot-dashboard.png)
 
----
+## Why I built this
 
-## Features
+I'm a recent CS grad looking for SDET / backend roles, and I wanted a project that:
+- Actually does something useful (not another todo app)
+- Touches the whole stack — frontend, API, database, scheduled jobs, email
+- Has a real test suite I can point to in interviews
 
-- **Add, edit, pause, and delete** HTTP monitors from a React dashboard
-- **Per-monitor check interval** (default 5 min, configurable per monitor)
-- **Transition-based alerts** — emails on `up → down` only, no repeat spam during an outage
-- **Response-time history** charted per monitor (last 50 checks)
-- **Live dashboard** — auto-refreshes every 15s without a page reload
-- **Graceful degradation** — works with no email configured, no alerts, no errors
+I picked an uptime monitor because every piece of it is something I'd be expected to know on the job: scheduled work, HTTP, database persistence, email integration, and a UI.
 
----
+## What it does
 
-## Architecture
+- Add URLs to monitor through a React dashboard
+- A cron job pings them on a per-monitor interval
+- Logs every check (status, response time, HTTP code) to Postgres
+- Sends an email **once** when a site goes down (not every minute it stays down)
+- Shows a chart of response times per monitor + a table of recent checks
+
+## How it's put together
 
 ```mermaid
 flowchart LR
-    User([User]) -->|http://localhost:5173| FE[React + Vite<br/>Dashboard]
-    FE -->|/api/*<br/>via Vite proxy| API[Express API]
-    API -->|pg pool| DB[(Postgres<br/>monitors + monitor_logs)]
+    User([User]) -->|localhost:5173| FE[React Dashboard]
+    FE -->|/api/*| API[Express API]
+    API -->|pg pool| DB[(Postgres)]
 
     subgraph Backend
         API
-        Scheduler[node-cron<br/>scheduler tick]
-        Check[HTTP check service]
-        Alert[Email alert service]
+        Scheduler[node-cron tick<br/>every minute]
+        Check[checkService<br/>axios GET]
+        Alert[alertService<br/>nodemailer]
     end
 
-    Scheduler -->|every 60s<br/>finds due monitors| DB
-    Scheduler -->|GET URL| Check
-    Check -->|transactional insert<br/>+ status update| DB
-    Check -->|on up→down transition| Alert
-    Alert -->|SMTP| Mail[Mailhog dev<br/>Gmail prod]
+    Scheduler -->|find due monitors| DB
+    Scheduler -->|ping URL| Check
+    Check -->|log result + update status| DB
+    Check -->|on up→down only| Alert
+    Alert -->|SMTP| Mail[Mailhog dev / Gmail prod]
 ```
 
-**Key design decisions:**
+A few things I made sure to get right:
 
-- **In-process cron** (`node-cron`) instead of a separate job queue. Simpler for a portfolio; trade-off noted in [Production tradeoffs](#production-tradeoffs).
-- **Transactional check writes** — `INSERT log` + `UPDATE monitor.last_status` commit together so the dashboard can never disagree with the log table.
-- **Per-monitor due-time** — the scheduler ticks every minute but each monitor has its own `interval_minutes` and is only checked when due. Lets one process handle thousands of monitors cleanly.
-- **Concurrency cap** — `MAX_CONCURRENT_CHECKS = 25` per tick prevents a flood of due monitors from drowning the DB pool.
-
----
+- **The log insert and status update happen in one transaction**, so the dashboard can never disagree with the log table.
+- **Alerts only fire on the up→down transition**, not every check while the site is down. This took me a minute to figure out but it's the right behavior.
+- **The scheduler runs every minute as one tick** instead of one timer per monitor. I read that's how real schedulers work and it scales way better.
 
 ## Tech stack
 
-| Layer | Choice | Why |
-|---|---|---|
-| Frontend | React 18 + Vite | Fast HMR, zero config |
-| Frontend styling | Tailwind CSS | Looks professional out of the box |
-| Server-state | TanStack Query | Removes useState/useEffect boilerplate, handles caching + refetch |
-| Charts | Recharts | Declarative React, easy to test |
-| Icons | lucide-react | Tree-shaken SVG icons |
-| Backend | Node + Express 5 | Industry standard, minimal magic |
-| Database | Postgres 16 | Real RDBMS, indexed log queries |
-| Scheduling | node-cron | In-process cron, no separate worker |
-| HTTP checks | axios | Configurable timeout + redirect handling |
-| Email | nodemailer | SMTP + Gmail support behind one API |
-| Dev SMTP | mailhog (Docker) | Catch alert emails locally without real credentials |
-| Unit tests | Vitest | Vite-native, fast, great DX |
-| API tests | Supertest | Hits Express without a network |
-| E2E tests | Playwright | Real Chromium, parallel-safe, CI-friendly |
-| CI | GitHub Actions | Free for public repos, easy Postgres service container |
+**Frontend:** React, Vite, Tailwind, TanStack Query (for API calls), Recharts (for the response-time chart), lucide-react (icons)
 
----
+**Backend:** Node, Express, Postgres (`pg`), node-cron, axios, nodemailer
+
+**Testing:** Vitest (unit), Supertest (API integration), Playwright (E2E)
+
+**Infra:** Docker Compose for local Postgres + mailhog (a fake SMTP server I use so I'm not spamming real emails in dev), GitHub Actions for CI
+
+I picked TanStack Query over plain `useEffect + fetch` because it handles loading/error/refetch out of the box and the docs convinced me it's the standard now. Same reason I picked Vite over CRA.
 
 ## Run it locally
 
-**Prereqs:** Docker Desktop, Node 20+, npm.
+You'll need Docker Desktop and Node 20+.
 
 ```bash
-# 1. Start the dev dependencies (Postgres + mailhog)
+# Spin up Postgres + mailhog
 docker compose up -d
 
-# 2. Backend
+# Backend
 cd backend
 cp .env.example .env
 npm install
 npm run dev          # http://localhost:4000
 
-# 3. Frontend (new terminal)
+# Frontend (new terminal)
 cd frontend
 npm install
 npm run dev          # http://localhost:5173
 ```
 
-Visit **http://localhost:5173** and add a monitor. The cron will start checking it within ~60 seconds.
+Open http://localhost:5173 and add a monitor. The cron starts checking within a minute.
 
-**View caught alert emails** at **http://localhost:8025** (mailhog's web UI).
+Mailhog's inbox is at http://localhost:8025 — alert emails land there in dev so you can see them without setting up Gmail.
 
----
+## The tests
 
-## Testing
-
-This project has a **full test pyramid** — 62 tests across three layers, all running in CI on every push.
+This is the part I'm proudest of. 62 tests, three layers, all running in CI on every push.
 
 ```mermaid
 flowchart BT
-    E2E[8 Playwright E2E tests<br/>Real Chromium · Real backend · Real DB]
-    INT[25 Supertest integration tests<br/>Real Express · Real Postgres]
-    UNIT[29 Vitest unit tests<br/>Pure functions · Stubbed I/O]
+    E2E[8 Playwright E2E tests<br/>real browser · real backend · real DB]
+    INT[25 Supertest integration tests<br/>real Express · real Postgres]
+    UNIT[29 Vitest unit tests<br/>pure functions · stubbed I/O]
     UNIT --> INT --> E2E
 
     style UNIT fill:#dcfce7,stroke:#16a34a
@@ -117,128 +103,78 @@ flowchart BT
     style E2E fill:#fee2e2,stroke:#dc2626
 ```
 
-### Unit tests (Vitest)
+**Unit (Vitest)** — `checkService` (all the status code branches + timeouts), `alertService` (SMTP/Gmail routing, error swallowing), `isValidUrl` (the URL parser). I refactored both services to take their HTTP client / SMTP transport as parameters so the tests don't need the network. That dependency-injection trick was probably the most useful pattern I learned on this project.
 
-- `checkService` — 2xx/3xx/4xx/5xx classification, timeouts, headers, validateStatus contract
-- `alertService` — SMTP vs Gmail routing, transporter caching, error swallowing, fallback from-address
-- `isValidUrl` — http/https accepted, ftp/file/garbage rejected
+**Integration (Supertest)** — full CRUD against the real Express app and a separate Postgres test database (`uptime_test`) that gets auto-created by a globalSetup hook. Tables get truncated between every test so order doesn't matter.
 
-```bash
-cd backend && npm test
-```
+**E2E (Playwright)** — actual Chromium clicking buttons and filling forms. Spins up its own backend on port 4001 with the scheduler disabled (so timing isn't flaky) and its own frontend on 5174. Doesn't touch my dev environment.
 
-### Integration tests (Supertest)
-
-- Full CRUD on `/api/monitors`
-- Validation errors (400s) for bad input
-- `ON DELETE CASCADE` actually removes child logs
-- Logs endpoint pagination + ordering
-
-A **separate test database** (`uptime_test`) is auto-provisioned by `globalSetup` so tests can run alongside the dev server without touching dev data. Tables are truncated between every test for order independence.
-
-### E2E tests (Playwright)
-
-- Add / list / pause / delete flows in real Chromium
-- Form validation surfacing backend errors
-- Modal detail view rendering
-
-Playwright spins up:
-- A **dedicated test backend** on `:4001` with `DISABLE_SCHEDULER=1` (deterministic — no real HTTP checks fire mid-test)
-- A **dedicated test frontend** on `:5174` with its proxy pointed at the test backend
+Run them:
 
 ```bash
-# From repo root
-npm install
-npx playwright install chromium
-npx playwright test
+cd backend && npm test         # 54 tests, ~1 second
+npx playwright test            # 8 tests, ~7 seconds (from repo root)
 ```
 
-On CI failure, the HTML report is uploaded as an artifact with screenshots + traces.
+CI runs both jobs in parallel and uploads the Playwright HTML report as an artifact if anything fails.
 
----
-
-## Project structure
+## Project layout
 
 ```
-.
-├── backend/                 # Express + Postgres + node-cron
-│   ├── src/
-│   │   ├── app.js           # Express factory (no side effects — testable)
-│   │   ├── index.js         # Bootstrap: initDb, scheduler, server, shutdown
-│   │   ├── db/              # Pool + schema init
-│   │   ├── routes/          # Express routers
-│   │   ├── controllers/     # Request handlers + input validation
-│   │   └── services/        # checkService, alertService, scheduler
-│   └── test/                # globalSetup + setupFiles for integration tests
-│
-├── frontend/                # React + Vite + Tailwind
-│   └── src/
-│       ├── App.jsx
-│       ├── components/      # MonitorCard, MonitorList, MonitorDetail, ...
-│       └── lib/             # api.js (fetch wrapper), format.js
-│
-├── e2e/                     # Playwright specs
-├── docker-compose.yml       # Postgres + mailhog dev services
-├── playwright.config.js     # webServer config spins up test backend + frontend
-└── .github/workflows/ci.yml # Two parallel jobs: backend tests, E2E tests
-```
+backend/
+  src/
+    app.js             Express factory (separate from bootstrap so it's testable)
+    index.js           Boots the server + scheduler
+    db/                Pool + schema init
+    routes/            Express routers
+    controllers/       Request handlers + validation
+    services/          checkService, alertService, scheduler
+  test/                Global setup for the test DB
 
----
+frontend/
+  src/
+    App.jsx
+    components/        MonitorCard, AddMonitorForm, MonitorDetail, etc.
+    lib/               api.js, formatters
+
+e2e/                   Playwright specs
+docker-compose.yml     Postgres + mailhog
+playwright.config.js   Spins up isolated test backend + frontend
+.github/workflows/     CI: backend tests + E2E in parallel
+```
 
 ## API
 
 ```
-GET    /health                          { ok: true }
-GET    /api/monitors                    list all monitors
-POST   /api/monitors                    create a monitor
+GET    /health                          health check
+GET    /api/monitors                    list all
+POST   /api/monitors                    create one
 GET    /api/monitors/:id                get one
-PATCH  /api/monitors/:id                partial update
-DELETE /api/monitors/:id                delete (cascades to logs)
-GET    /api/monitors/:id/logs?limit=50  recent check history (max 500)
+PATCH  /api/monitors/:id                update fields
+DELETE /api/monitors/:id                delete (logs cascade)
+GET    /api/monitors/:id/logs?limit=50  recent check history
 ```
 
-Example:
+Quick test:
 
 ```bash
 curl -X POST http://localhost:4000/api/monitors \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "GitHub",
-    "url": "https://github.com",
-    "interval_minutes": 5,
-    "alert_email": "you@example.com"
-  }'
+  -d '{"name":"GitHub","url":"https://github.com","interval_minutes":5}'
 ```
 
----
+## Things I'd add with more time
 
-## Production tradeoffs
-
-A few honest notes on what would change if this were going to production:
-
-- **In-process cron** would become a job queue (BullMQ + Redis) or a dedicated worker process. The current setup dies if the Node process dies — fine for a single-tenant portfolio app, not fine for paying customers.
-- **Single DB pool** would become a connection pool per service + a read replica for the dashboard's log queries.
-- **Polling** would be supplemented with **circuit breakers** so a continuously failing target doesn't burn HTTP requests forever.
-- **Email-only alerts** would gain webhook / Slack / PagerDuty escalation.
-- **Schema migrations** would use a real migration tool (Drizzle, Knex) instead of `CREATE TABLE IF NOT EXISTS`. Fine for a fresh install; doesn't handle schema evolution.
-- **Auth** doesn't exist — every visitor sees every monitor. Would add session-based auth + per-user data partitioning.
-- **Observability** would gain Prometheus metrics + structured JSON logs (pino) so dashboards and alerts can be built off the monitor itself.
-
-These omissions are deliberate scope cuts to keep the project shippable as a portfolio piece, not gaps from missing knowledge.
-
----
+- Auth — right now anyone hitting the page sees all the monitors
+- A real job queue (BullMQ or similar) so the scheduler doesn't die if the Node process restarts
+- Webhook / Slack alerts in addition to email
+- Status page view to share publicly
+- Migrations (currently it's just `CREATE TABLE IF NOT EXISTS` — fine for fresh installs, not great for changes later)
 
 ## Screenshots
 
-Drop a screenshot of the running app at `docs/screenshot-dashboard.png` to populate the image above.
-
-A quick way:
-1. Start backend + frontend, add 2-3 monitors (one good URL, one bad)
-2. Wait ~1 min for the first checks to land
-3. Hit your OS screenshot shortcut, save to `docs/screenshot-dashboard.png`
+Drop a screenshot at `docs/screenshot-dashboard.png` to fill in the image at the top. I'll add a real one once I get a clean shot of the dashboard with a few monitors running.
 
 ---
 
-## License
-
-MIT
+Built by [Wafi Hassan](https://github.com/Wafinator).
