@@ -149,5 +149,5 @@ curl -X POST http://localhost:4000/api/monitors \
 - Status page view to share publicly
 - Migrations (currently it's just `CREATE TABLE IF NOT EXISTS` — fine for fresh installs, not great for changes later)
 
-```
+
 Built by [Wafi Hassan](https://github.com/Wafinator).
