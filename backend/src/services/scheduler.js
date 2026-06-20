@@ -3,16 +3,19 @@ const { pool } = require("../db/pool");
 const { checkUrl } = require("./checkService");
 const { sendDownAlert } = require("./alertService");
 
-// Tick every minute. Each tick: find active monitors whose next-check time has arrived,
-// run them concurrently, record results, and email alerts on up -> down transitions.
+// Tick every minute. Each tick we grab the monitors that are due, run their
+// checks in parallel, save the results, and fire an email if a site just
+// flipped from up to down.
 const CRON_EXPRESSION = "* * * * *";
 
-// Hard cap on how many monitors we run per tick, so a flood of due monitors
-// can't blow up our event loop or hammer the DB pool.
+// Cap how many we run at once so a flood of due monitors can't drown the
+// DB pool or hammer the event loop.
 const MAX_CONCURRENT_CHECKS = 25;
 
 async function findDueMonitors() {
-  // "Due" = never checked yet, OR last_checked_at is older than interval_minutes ago.
+  // Due means we've never checked it, or it's been at least interval_minutes
+  // since the last check. NULLS FIRST so brand new monitors get picked up
+  // before the older ones on the same tick.
   const { rows } = await pool.query(
     `SELECT *
      FROM monitors
@@ -31,8 +34,8 @@ async function findDueMonitors() {
 async function runCheckForMonitor(monitor) {
   const result = await checkUrl(monitor.url);
 
-  // Persist the log + update the monitor's last status in a single transaction
-  // so the dashboard never shows a status that disagrees with the latest log.
+  // Insert the log row and update the monitor's status in one transaction so
+  // the dashboard never shows a status that disagrees with the latest log.
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -58,8 +61,8 @@ async function runCheckForMonitor(monitor) {
     client.release();
   }
 
-  // Alert only on a state transition into "down". This prevents one outage
-  // from spamming the user every minute it stays down.
+  // Only email on the actual transition into down. Otherwise one outage spams
+  // the user every single minute it's still broken.
   const wasUp = monitor.last_status !== "down";
   if (result.status === "down" && wasUp) {
     await sendDownAlert(monitor, result);
@@ -81,8 +84,8 @@ async function tick() {
 
   console.log(`[scheduler] Running ${due.length} check(s).`);
 
-  // Concurrent — one slow target shouldn't block the others.
-  // Catch per-monitor so one failure doesn't drop the rest.
+  // Run them concurrently so one slow target doesn't hold up the others.
+  // Catch per monitor so a single bad one doesn't kill the rest.
   await Promise.all(
     due.map((m) =>
       runCheckForMonitor(m).catch((err) => {

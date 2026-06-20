@@ -1,11 +1,9 @@
 const nodemailer = require("nodemailer");
 
 /**
- * Build an alert service.
- *
- * @param {{ createTransport?: Function, env?: NodeJS.ProcessEnv }} [deps]
- * Both are injectable for tests; production code calls makeAlertService()
- * with no args and gets the real nodemailer + process.env.
+ * Build an alert service. Both createTransport and env can be passed in so
+ * the tests can swap them out. Production code just calls makeAlertService()
+ * with nothing and gets real nodemailer plus real process.env.
  */
 function makeAlertService(deps = {}) {
   const createTransport = deps.createTransport || nodemailer.createTransport;
@@ -13,13 +11,14 @@ function makeAlertService(deps = {}) {
 
   let transporter = null;
 
-  // Lazily create a single transporter.
+  // Build the transporter the first time we need it.
   //
-  // Two modes:
-  //   1. SMTP_HOST set        → connect to that host (e.g. mailhog in dev).
-  //   2. EMAIL_USER+EMAIL_PASS → use Gmail (prod / real alerts).
+  // Two ways to configure:
+  //   SMTP_HOST set                 use that host (mailhog in dev)
+  //   EMAIL_USER + EMAIL_PASS set   use Gmail (real alerts)
   //
-  // Returns null if neither is configured.
+  // If neither is set we return null and the caller logs and bails. That way
+  // the app still runs fine with no email config.
   function getTransporter() {
     if (transporter) return transporter;
 
@@ -48,10 +47,8 @@ function makeAlertService(deps = {}) {
     return env.EMAIL_USER || "uptime-monitor@localhost";
   }
 
-  /**
-   * Sends a "monitor is down" alert. No-op (logged) if email isn't configured
-   * or the monitor has no alert_email set.
-   */
+  // Fires off a "your site is down" email. Quietly no ops if email isn't
+  // set up or the monitor doesn't have an alert_email.
   async function sendDownAlert(monitor, result) {
     if (!monitor.alert_email) return;
 
@@ -79,6 +76,7 @@ function makeAlertService(deps = {}) {
       });
       console.log(`[alert] Down alert sent for "${monitor.name}" -> ${monitor.alert_email}`);
     } catch (err) {
+      // Don't let a flaky SMTP take down the scheduler.
       console.error(`[alert] Failed to send alert for "${monitor.name}":`, err.message);
     }
   }
@@ -86,7 +84,7 @@ function makeAlertService(deps = {}) {
   return { sendDownAlert };
 }
 
-// Default singleton — what production code uses.
+// Default instance used by the running app.
 const defaultService = makeAlertService();
 
 module.exports = {

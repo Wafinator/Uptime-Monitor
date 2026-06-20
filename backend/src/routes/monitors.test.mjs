@@ -4,8 +4,8 @@ import request from "supertest";
 
 const require = createRequire(import.meta.url);
 
-// Load source modules through createRequire AFTER setupFiles has set DATABASE_URL.
-// (Static ESM imports would be hoisted before env mutation.)
+// Load source modules through createRequire so they pick up DATABASE_URL
+// after setupFiles has set it. Static imports would be hoisted earlier.
 const { createApp } = require("../app.js");
 const { initDb } = require("../db/init.js");
 const { pool } = require("../db/pool.js");
@@ -22,7 +22,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  // Wipe state between tests so order doesn't matter and serial IDs reset.
+  // Reset state between tests so order doesn't matter and IDs restart at 1.
   await pool.query("TRUNCATE monitors, monitor_logs RESTART IDENTITY CASCADE");
 });
 
@@ -146,7 +146,7 @@ describe("PATCH /api/monitors/:id", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.name).toBe("Renamed");
-    // Unchanged fields preserved
+    // Untouched fields should stay the same.
     expect(res.body.url).toBe(validMonitor.url);
     expect(res.body.interval_minutes).toBe(validMonitor.interval_minutes);
   });
@@ -213,7 +213,7 @@ describe("DELETE /api/monitors/:id", () => {
 
   it("cascades and removes associated logs", async () => {
     const created = await request(app).post("/api/monitors").send(validMonitor);
-    // Seed a log directly to prove the cascade works.
+    // Drop a log in directly so we can prove the cascade actually works.
     await pool.query(
       `INSERT INTO monitor_logs (monitor_id, status, status_code, response_time_ms)
        VALUES ($1, 'up', 200, 100)`,
@@ -270,7 +270,7 @@ describe("GET /api/monitors/:id/logs", () => {
   it("caps the limit at 500 to prevent runaway queries", async () => {
     const created = await request(app).post("/api/monitors").send(validMonitor);
     const id = created.body.id;
-    // Don't seed 500 rows — just confirm the endpoint accepts the param without erroring.
+    // Not seeding 500 rows. Just making sure the endpoint accepts a big limit.
     const res = await request(app).get(`/api/monitors/${id}/logs?limit=999999`);
     expect(res.status).toBe(200);
   });

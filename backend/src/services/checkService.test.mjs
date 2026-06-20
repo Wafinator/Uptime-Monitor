@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createRequire } from "module";
 
-// Load the CJS service via createRequire so we don't depend on ESM/CJS interop quirks.
+// Use createRequire so we load the CJS source without ESM/CJS interop weirdness.
 const require = createRequire(import.meta.url);
 const { checkUrl, DEFAULT_TIMEOUT_MS } = require("./checkService.js");
 
-// Stub axios — we pass it in explicitly per call (dependency injection).
+// Stub axios. We pass it in per call instead of mocking the module.
 function makeStub() {
   return { get: vi.fn() };
 }

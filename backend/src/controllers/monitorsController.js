@@ -1,7 +1,7 @@
 const { pool } = require("../db/pool");
 
-// Minimal URL validation — we just want to catch obvious typos here.
-// The real test of whether a URL works is the actual HTTP check.
+// Just a sanity check on the URL so we don't store obvious junk. The real
+// test is whether the HTTP request actually goes through.
 function isValidUrl(value) {
   if (typeof value !== "string") return false;
   try {
@@ -68,7 +68,7 @@ async function updateMonitor(req, res, next) {
   try {
     const { name, url, interval_minutes, alert_email, is_active } = req.body ?? {};
 
-    // Build a partial update — only touch fields the caller actually sent.
+    // Only touch the fields the caller actually sent. Build the SQL dynamically.
     const fields = [];
     const values = [];
     let i = 1;
@@ -134,7 +134,8 @@ async function deleteMonitor(req, res, next) {
 
 async function getMonitorLogs(req, res, next) {
   try {
-    // Default 50, cap at 500 so a stray ?limit=999999 can't tank the query.
+    // Default 50 rows, hard cap at 500 so someone passing ?limit=999999
+    // can't murder the query.
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
     const { rows } = await pool.query(
       `SELECT * FROM monitor_logs

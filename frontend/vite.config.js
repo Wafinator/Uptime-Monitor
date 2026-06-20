@@ -5,8 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    // Forward /api/* to the Express backend so the frontend doesn't need to
-    // know the backend's host. No CORS, no hardcoded URLs.
+    // Forward /api/* to the Express backend. That way the frontend code never
+    // needs to know the backend URL and we never deal with CORS in dev.
     proxy: {
       // E2E tests set VITE_API_TARGET so the proxy points at the test backend.
       "/api": process.env.VITE_API_TARGET || "http://localhost:4000",

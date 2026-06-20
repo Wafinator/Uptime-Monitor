@@ -1,4 +1,5 @@
-// "5 minutes ago" / "just now" — no date-fns dep needed.
+// Quick relative time formatter. Could pull in date-fns but this is enough
+// for the dashboard.
 export function timeAgo(isoString) {
   if (!isoString) return "never";
   const then = new Date(isoString).getTime();

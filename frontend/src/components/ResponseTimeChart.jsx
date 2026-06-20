@@ -1,7 +1,7 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
-// Logs come newest-first from the API. The chart wants oldest-first
-// so time flows left -> right.
+// The API hands us logs newest first, but a time chart should read left to
+// right, so flip the array.
 export default function ResponseTimeChart({ logs }) {
   const data = [...logs].reverse().map((log) => ({
     time: new Date(log.checked_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -10,7 +10,7 @@ export default function ResponseTimeChart({ logs }) {
   }));
 
   if (data.length === 0) {
-    return <p className="text-sm text-slate-500">No checks yet — give it a minute.</p>;
+    return <p className="text-sm text-slate-500">No checks yet, give it a minute.</p>;
   }
 
   return (

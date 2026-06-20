@@ -4,8 +4,8 @@ import pg from "pg";
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL || "postgres://uptime:uptime@localhost:5433/uptime_test";
 
-// Clean state before each test so order doesn't matter and tests stay independent.
-// (Equivalent to TRUNCATE between integration tests on the backend side.)
+// Wipe between tests so each one starts from zero and order doesn't matter.
+// Same idea as the backend integration tests with TRUNCATE.
 test.beforeEach(async () => {
   const client = new pg.Client({ connectionString: TEST_DATABASE_URL });
   await client.connect();
@@ -43,13 +43,13 @@ test.describe("Dashboard", () => {
       await page.getByTestId("field-name").fill(name);
       await page.getByTestId("field-url").fill(`https://${name.toLowerCase()}.example.com`);
       await page.getByTestId("submit-monitor").click();
-      // Wait for the card to appear before adding the next.
+      // Wait until this card shows up before queueing the next one.
       await expect(page.getByTestId("monitor-card").filter({ hasText: name })).toBeVisible();
     }
 
     const cards = page.getByTestId("monitor-card");
     await expect(cards).toHaveCount(3);
-    // Newest first — Third should be at the top.
+    // Newest first so Third should be at the top.
     await expect(cards.nth(0)).toContainText("Third");
     await expect(cards.nth(2)).toContainText("First");
   });
@@ -73,7 +73,7 @@ test.describe("Dashboard", () => {
     await addMonitor(page, "Doomed", "https://doomed.example.com");
     await expect(page.getByTestId("monitor-card")).toHaveCount(1);
 
-    // The delete button shows a confirm() — auto-accept it.
+    // Delete pops a confirm dialog. Auto-accept it.
     page.once("dialog", (dialog) => dialog.accept());
     await page.getByTestId("monitor-delete").click();
 
@@ -100,7 +100,7 @@ test.describe("Form validation", () => {
     await page.getByTestId("open-add-form").click();
     await page.getByTestId("submit-monitor").click();
 
-    // Form should still be open — no new card created.
+    // Form should still be open and no card should have been created.
     await expect(page.getByTestId("add-monitor-form")).toBeVisible();
     await expect(page.getByTestId("monitor-card")).toHaveCount(0);
   });
@@ -109,10 +109,8 @@ test.describe("Form validation", () => {
     await page.goto("/");
     await page.getByTestId("open-add-form").click();
     await page.getByTestId("field-name").fill("Bad");
-    // Bypass the email field type=url constraint by filling a non-http scheme
-    // into a name-like field. We use the URL field directly with a scheme the
-    // backend rejects (ftp). The browser's URL validation accepts ftp:// so
-    // the form will submit and the API will respond with 400.
+    // The browser's URL validation accepts ftp:// so the form submits and
+    // we see the backend's 400 in the UI.
     await page.getByTestId("field-url").fill("ftp://example.com");
     await page.getByTestId("submit-monitor").click();
 
@@ -121,7 +119,7 @@ test.describe("Form validation", () => {
   });
 });
 
-// Helper: open the form, fill required fields, submit, wait for the card.
+// Quick helper. Open the form, fill in name and URL, hit submit, wait for the card.
 async function addMonitor(page, name, url) {
   await page.getByTestId("open-add-form").click();
   await page.getByTestId("field-name").fill(name);

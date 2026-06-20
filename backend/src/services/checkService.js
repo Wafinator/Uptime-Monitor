@@ -3,12 +3,13 @@ const axios = require("axios");
 const DEFAULT_TIMEOUT_MS = 10000;
 
 /**
- * Pings a URL and reports whether it is up or down.
+ * Hit a URL and figure out if it's up or down.
  *
- * "Up" = the server responded with a 2xx status within the timeout.
- * Anything else (3xx/4xx/5xx, DNS failure, connection refused, timeout) = "down".
+ * Up means we got a 2xx response inside the timeout. Anything else
+ * (3xx, 4xx, 5xx, DNS fail, refused, timeout) is down.
  *
- * The HTTP client is injectable to keep tests fast and offline.
+ * httpClient is injectable so the unit tests can pass a stub instead of
+ * making a real network request.
  *
  * @param {string} url
  * @param {number} [timeoutMs]
@@ -20,9 +21,9 @@ async function checkUrl(url, timeoutMs = DEFAULT_TIMEOUT_MS, httpClient = axios)
   try {
     const res = await httpClient.get(url, {
       timeout: timeoutMs,
-      // Don't throw on non-2xx; we want to inspect the status ourselves.
+      // Don't throw on non 2xx. We want to look at the status ourselves.
       validateStatus: () => true,
-      // Follow redirects but cap them.
+      // Follow redirects but stop at 5 so a redirect loop can't hang us.
       maxRedirects: 5,
       headers: { "User-Agent": "uptime-monitor/1.0" },
     });
@@ -36,7 +37,7 @@ async function checkUrl(url, timeoutMs = DEFAULT_TIMEOUT_MS, httpClient = axios)
       responseTimeMs,
     };
   } catch (err) {
-    // Timeout, DNS error, connection refused, etc. — no HTTP status available.
+    // Timeout, DNS error, connection refused, whatever. No HTTP status here.
     return {
       status: "down",
       statusCode: null,

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
@@ -12,7 +12,7 @@ const baseMonitor = {
 
 const baseResult = { statusCode: 500, responseTimeMs: 123 };
 
-// Builds a fresh service with stubbed nodemailer + an explicit env object.
+// Spin up a fresh service with a stub nodemailer and a fake env object.
 function buildService(env = {}) {
   const sendMail = vi.fn().mockResolvedValue({});
   const createTransport = vi.fn(() => ({ sendMail }));

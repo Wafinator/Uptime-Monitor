@@ -10,8 +10,8 @@ const PORT = parseInt(process.env.PORT, 10) || 4000;
 async function main() {
   await initDb();
 
-  // E2E tests set DISABLE_SCHEDULER=1 so real HTTP checks don't fire during
-  // UI assertions. Production and dev leave it unset.
+  // E2E tests set DISABLE_SCHEDULER=1 so cron doesn't fire real HTTP checks
+  // while Playwright is asserting on the UI. Dev and prod leave it unset.
   if (process.env.DISABLE_SCHEDULER !== "1") {
     startScheduler();
   } else {
@@ -23,7 +23,8 @@ async function main() {
     console.log(`[api] Listening on http://localhost:${PORT}`);
   });
 
-  // Graceful shutdown so cron + DB pool actually close on Ctrl+C.
+  // Stop cron, close the HTTP server, drain the pool. Without this, ctrl-c
+  // leaves the DB connections hanging.
   const shutdown = async (signal) => {
     console.log(`[api] Received ${signal}, shutting down...`);
     stopScheduler();

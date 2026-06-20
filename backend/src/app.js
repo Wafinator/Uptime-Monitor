@@ -3,9 +3,9 @@ const cors = require("cors");
 
 const monitorsRouter = require("./routes/monitors");
 
-// Pure app factory: configures Express and returns it.
-// No DB init, no scheduler, no server.listen — those belong in the bootstrap.
-// This separation is what makes Supertest integration tests possible.
+// Builds the Express app and hands it back. No DB init, no scheduler,
+// no listen call. Keeping those out of here is what lets the Supertest
+// integration tests just import the app and hit it.
 function createApp() {
   const app = express();
 
@@ -16,7 +16,8 @@ function createApp() {
 
   app.use("/api/monitors", monitorsRouter);
 
-  // Centralized error handler — controllers call next(err) and we respond here.
+  // One error handler at the bottom so controllers can just next(err) and
+  // not worry about the response shape.
   app.use((err, _req, res, _next) => {
     console.error("[api] Unhandled error:", err);
     res.status(500).json({ error: "Internal server error" });

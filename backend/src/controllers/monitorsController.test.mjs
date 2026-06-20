@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 
+// monitorsController pulls pool in at the top. We're only testing the pure
+// isValidUrl helper so a stub module is enough.
 vi.mock("../db/pool.js", () => ({ pool: { query: vi.fn() } }));
 
 const { isValidUrl } = await import("./monitorsController.js");

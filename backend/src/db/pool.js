@@ -6,7 +6,8 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// A single shared connection pool for the whole app.
+// One shared pool for the whole app. Way better than opening a new connection
+// per query.
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });

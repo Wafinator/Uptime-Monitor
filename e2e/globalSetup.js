@@ -1,4 +1,4 @@
-// Runs ONCE before any E2E test. Ensures the test DB is empty so tests start clean.
+// Runs once before any E2E test. Wipes the test DB so the suite starts clean.
 import pg from "pg";
 
 const TEST_DATABASE_URL =
@@ -8,13 +8,13 @@ export default async function globalSetup() {
   const client = new pg.Client({ connectionString: TEST_DATABASE_URL });
   try {
     await client.connect();
-    // Tables exist because the backend's initDb() runs on startup.
-    // But on the very first run before the backend has booted, they might not.
-    // Truncate inside a try so the first-run case doesn't blow up.
+    // The backend's initDb runs on boot, so tables exist by the time real
+    // tests run. But on the very first run before the backend has booted
+    // they might not, so swallow that case.
     try {
       await client.query("TRUNCATE monitors, monitor_logs RESTART IDENTITY CASCADE");
     } catch {
-      // Tables don't exist yet — backend will create them shortly.
+      // Tables don't exist yet, backend will create them in a sec.
     }
   } finally {
     await client.end();

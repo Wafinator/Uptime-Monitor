@@ -1,12 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// E2E config:
-//  - Spins up the BACKEND on 4001 pointing at uptime_test DB, scheduler off.
-//  - Spins up the FRONTEND on 5174 with its proxy pointed at the test backend.
-//  - Tests then hit http://localhost:5174 as a real user would.
+// E2E config.
+//   The BACKEND runs on 4001 pointing at uptime_test with cron disabled.
+//   The FRONTEND runs on 5174 with its proxy pointed at the test backend.
+//   Tests hit http://localhost:5174 like a real user would.
 //
-// This isolation means the dev servers on 4000/5173 can keep running while
-// E2E executes — no port conflicts, no shared DB state.
+// Different ports from dev (4000/5173) so I can run the E2E suite while my
+// dev servers are still up. No port conflicts, no shared DB state.
 
 const TEST_BACKEND_PORT = 4001;
 const TEST_FRONTEND_PORT = 5174;
@@ -15,7 +15,7 @@ const TEST_DATABASE_URL =
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: false, // tests share one DB; serial execution keeps state predictable
+  fullyParallel: false, // tests share one DB so serial keeps state predictable
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,

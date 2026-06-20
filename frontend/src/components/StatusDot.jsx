@@ -1,5 +1,5 @@
-// One concept, one component. The status field can be 'up', 'down', or null
-// (never checked). Each gets its own color and label.
+// Status can be 'up', 'down', or null (when a monitor was just created and
+// hasn't been checked yet). Each gets its own color and label.
 const STYLES = {
   up:   { dot: "bg-emerald-500",          ring: "ring-emerald-200",     label: "Up" },
   down: { dot: "bg-rose-500 animate-pulse", ring: "ring-rose-200",       label: "Down" },

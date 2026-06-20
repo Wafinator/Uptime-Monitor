@@ -87,7 +87,8 @@ export default function AddMonitorForm() {
 }
 
 function Field({ label, value, onChange, type = "text", testid, ...rest }) {
-  // testid is derived from the label by default so each input is targetable.
+  // Derive a stable test id from the label so Playwright has something
+  // reliable to grab.
   const id = testid || `field-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   return (
     <label className="block">

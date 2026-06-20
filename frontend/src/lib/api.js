@@ -1,5 +1,5 @@
-// Thin wrapper around fetch. All paths are relative — Vite's dev proxy forwards
-// /api/* to the Express backend, so we don't need to know its URL.
+// Small fetch wrapper. Paths are relative so Vite's proxy can forward them
+// to the backend without us hardcoding a URL anywhere.
 
 async function request(path, { method = "GET", body } = {}) {
   const res = await fetch(path, {
@@ -19,7 +19,7 @@ async function request(path, { method = "GET", body } = {}) {
     throw new Error(`${res.status}: ${detail}`);
   }
 
-  // DELETE returns 204 — no body to parse.
+  // DELETE returns 204 with no body.
   if (res.status === 204) return null;
   return res.json();
 }

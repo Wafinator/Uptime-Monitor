@@ -7,7 +7,7 @@ import "./index.css";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Refetch the monitors list every 15s so the dashboard stays live.
+      // Refetch every 15s so the dashboard updates without a manual reload.
       refetchInterval: 15000,
       refetchOnWindowFocus: true,
       retry: 1,
