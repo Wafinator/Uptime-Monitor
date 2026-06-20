@@ -4,7 +4,7 @@ A self-hosted uptime monitor I built to learn full-stack development and practic
 
 [![CI](https://github.com/Wafinator/Uptime-Monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/Wafinator/Uptime-Monitor/actions/workflows/ci.yml)
 
-![Dashboard screenshot](docs/screenshot-dashboard.png)
+![Dashboard screenshot](Screenshot-UI.png)
 
 ## Why I built this
 
