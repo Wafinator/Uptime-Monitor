@@ -81,11 +81,11 @@ flowchart BT
     style E2E fill:#fee2e2,stroke:#dc2626
 ```
 
-**Unit (Vitest)** — `checkService` (all the status code branches + timeouts), `alertService` (SMTP/Gmail routing, error swallowing), `isValidUrl` (the URL parser). I refactored both services to take their HTTP client / SMTP transport as parameters so the tests don't need the network. That dependency-injection trick was probably the most useful pattern I learned on this project.
+**Unit (Vitest)**: `checkService` (all the status code branches + timeouts), `alertService` (SMTP/Gmail routing, error swallowing), `isValidUrl` (the URL parser). I refactored both services to take their HTTP client / SMTP transport as parameters so the tests don't need the network. That dependency-injection trick was probably the most useful pattern I learned on this project.
 
-**Integration (Supertest)** — full CRUD against the real Express app and a separate Postgres test database (`uptime_test`) that gets auto-created by a globalSetup hook. Tables get truncated between every test so order doesn't matter.
+**Integration (Supertest)**: Full CRUD against the real Express app and a separate Postgres test database (`uptime_test`) that gets auto-created by a globalSetup hook. Tables get truncated between every test so order doesn't matter.
 
-**E2E (Playwright)** — actual Chromium clicking buttons and filling forms. Spins up its own backend on port 4001 with the scheduler disabled (so timing isn't flaky) and its own frontend on 5174. Doesn't touch my dev environment.
+**E2E (Playwright)**:  Actual Chromium clicking buttons and filling forms. Spins up its own backend on port 4001 with the scheduler disabled (so timing isn't flaky) and its own frontend on 5174. Doesn't touch my dev environment.
 
 Run them:
 
@@ -147,7 +147,7 @@ curl -X POST http://localhost:4000/api/monitors \
 - A real job queue (BullMQ or similar) so the scheduler doesn't die if the Node process restarts
 - Webhook / Slack alerts in addition to email
 - Status page view to share publicly
-- Migrations (currently it's just `CREATE TABLE IF NOT EXISTS` — fine for fresh installs, not great for changes later)
+- Migrations (currently it's just `CREATE TABLE IF NOT EXISTS` fine for fresh installs, not great for changes later)
 
 
 Built by [Wafi Hassan](https://github.com/Wafinator).
