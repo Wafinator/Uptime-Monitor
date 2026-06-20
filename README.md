@@ -23,28 +23,6 @@ I picked an uptime monitor because every piece of it is something I'd be expecte
 - Sends an email **once** when a site goes down (not every minute it stays down)
 - Shows a chart of response times per monitor + a table of recent checks
 
-## How it's put together
-
-```mermaid
-flowchart LR
-    User([User]) -->|localhost:5173| FE[React Dashboard]
-    FE -->|/api/*| API[Express API]
-    API -->|pg pool| DB[(Postgres)]
-
-    subgraph Backend
-        API
-        Scheduler[node-cron tick<br/>every minute]
-        Check[checkService<br/>axios GET]
-        Alert[alertService<br/>nodemailer]
-    end
-
-    Scheduler -->|find due monitors| DB
-    Scheduler -->|ping URL| Check
-    Check -->|log result + update status| DB
-    Check -->|on up→down only| Alert
-    Alert -->|SMTP| Mail[Mailhog dev / Gmail prod]
-```
-
 A few things I made sure to get right:
 
 - **The log insert and status update happen in one transaction**, so the dashboard can never disagree with the log table.
