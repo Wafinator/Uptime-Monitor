@@ -9,7 +9,14 @@ const PORT = parseInt(process.env.PORT, 10) || 4000;
 
 async function main() {
   await initDb();
-  startScheduler();
+
+  // E2E tests set DISABLE_SCHEDULER=1 so real HTTP checks don't fire during
+  // UI assertions. Production and dev leave it unset.
+  if (process.env.DISABLE_SCHEDULER !== "1") {
+    startScheduler();
+  } else {
+    console.log("[api] Scheduler disabled (DISABLE_SCHEDULER=1).");
+  }
 
   const app = createApp();
   const server = app.listen(PORT, () => {
