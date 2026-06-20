@@ -149,10 +149,5 @@ curl -X POST http://localhost:4000/api/monitors \
 - Status page view to share publicly
 - Migrations (currently it's just `CREATE TABLE IF NOT EXISTS` — fine for fresh installs, not great for changes later)
 
-## Screenshots
-
-Drop a screenshot at `docs/screenshot-dashboard.png` to fill in the image at the top. I'll add a real one once I get a clean shot of the dashboard with a few monitors running.
-
----
 
 Built by [Wafi Hassan](https://github.com/Wafinator).
