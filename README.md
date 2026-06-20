@@ -143,7 +143,7 @@ curl -X POST http://localhost:4000/api/monitors \
 
 ## Things I'd add with more time
 
-- Auth — right now anyone hitting the page sees all the monitors
+- Auth, right now anyone hitting the page sees all the monitors
 - A real job queue (BullMQ or similar) so the scheduler doesn't die if the Node process restarts
 - Webhook / Slack alerts in addition to email
 - Status page view to share publicly
