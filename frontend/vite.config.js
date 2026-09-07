@@ -4,7 +4,8 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173,
+    host: "127.0.0.1",
+    port: 3000,
     // Forward /api/* to the Express backend. That way the frontend code never
     // needs to know the backend URL and we never deal with CORS in dev.
     proxy: {

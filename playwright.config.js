@@ -2,14 +2,14 @@ import { defineConfig, devices } from "@playwright/test";
 
 // E2E config.
 //   The BACKEND runs on 4001 pointing at uptime_test with cron disabled.
-//   The FRONTEND runs on 5174 with its proxy pointed at the test backend.
-//   Tests hit http://localhost:5174 like a real user would.
+//   The FRONTEND runs on 3001 with its proxy pointed at the test backend.
+//   Tests hit http://localhost:3001 like a real user would.
 //
-// Different ports from dev (4000/5173) so I can run the E2E suite while my
+// Different ports from dev (4000/3000) so I can run the E2E suite while my
 // dev servers are still up. No port conflicts, no shared DB state.
 
 const TEST_BACKEND_PORT = 4001;
-const TEST_FRONTEND_PORT = 5174;
+const TEST_FRONTEND_PORT = 3001;
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL || "postgres://uptime:uptime@localhost:5433/uptime_test";
 

@@ -58,10 +58,10 @@ npm run dev          # http://localhost:4000
 # Frontend (new terminal)
 cd frontend
 npm install
-npm run dev          # http://localhost:5173
+npm run dev          # http://127.0.0.1:3000
 ```
 
-Open http://localhost:5173 and add a monitor. The cron starts checking within a minute.
+Open http://127.0.0.1:3000 and add a monitor. The cron starts checking within a minute.
 
 Mailhog's inbox is at http://localhost:8025 — alert emails land there in dev so you can see them without setting up Gmail.
 
@@ -85,7 +85,7 @@ flowchart BT
 
 **Integration (Supertest)**: Full CRUD against the real Express app and a separate Postgres test database (`uptime_test`) that gets auto-created by a globalSetup hook. Tables get truncated between every test so order doesn't matter.
 
-**E2E (Playwright)**:  Actual Chromium clicking buttons and filling forms. Spins up its own backend on port 4001 with the scheduler disabled (so timing isn't flaky) and its own frontend on 5174. Doesn't touch my dev environment.
+**E2E (Playwright)**:  Actual Chromium clicking buttons and filling forms. Spins up its own backend on port 4001 with the scheduler disabled (so timing isn't flaky) and its own frontend on 3001. Doesn't touch my dev environment.
 
 Run them:
 
